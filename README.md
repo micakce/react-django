@@ -142,3 +142,21 @@ docker-compose run --rm frontend npm add axios
 docker-compose down
 docker-compose up --build
 ```
+
+
+### Models
+
+1.- First add your models in __`<project>/<app>/models.py`__
+2.- Add your app to the `INSTALLED_APPS` configuration in
+`<project>/settings.py` ('<app>.apps.AppConfig')
+3.- run `python manage.py makemigrations`
+4.- run `python manage.py migrate` (if you change you model, repeat 3 and 4)
+5.- To manage your new models in the Admin site, import and add them to the
+`<app>/admin.py` file:
+
+```python
+from django.contrib import admin
+from .models import Question
+
+admin.site.register(Question)
+```

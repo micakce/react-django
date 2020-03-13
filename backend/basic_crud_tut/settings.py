@@ -25,7 +25,9 @@ SECRET_KEY = '$-s9qfey1*-^ow!^%zau$ey_38^+^=h+p#nh%-qmf#-etm4dxa'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+        '18.228.157.97',
+        ]
 
 
 # Application definition
@@ -37,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'school_personnel.apps.SchoolPersonnelConfig',
 ]
 
 MIDDLEWARE = [
