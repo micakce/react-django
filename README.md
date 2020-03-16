@@ -143,20 +143,31 @@ docker-compose down
 docker-compose up --build
 ```
 
+### Admin Site
+To be able to login to the admin site you have to create a user, so attach to
+you backend container `docker exec -it <container> /bin/bash` and run:
+`python manage.py createsuperuser`. It al prompt for user name and password
+(twice for confirmation), after this it'll be possibe  to login to the admin
+site (`localhost:8000/admin`) and manage your models from there.
+
 
 ### Models
 
-1.- First add your models in __`<project>/<app>/models.py`__
-2.- Add your app to the `INSTALLED_APPS` configuration in
+1. First add your models in __`<project>/<app>/models.py`__
+2. Add your app to the `INSTALLED_APPS` configuration in
 `<project>/settings.py` ('<app>.apps.AppConfig')
-3.- run `python manage.py makemigrations`
-4.- run `python manage.py migrate` (if you change you model, repeat 3 and 4)
-5.- To manage your new models in the Admin site, import and add them to the
+3. run `python manage.py makemigrations`
+4. run `python manage.py migrate` (if you change you model, repeat 3 and 4)
+5. To manage your new models in the Admin site, import and add them to the
 `<app>/admin.py` file:
 
 ```python
 from django.contrib import admin
-from .models import Question
+from .models import Professor
 
 admin.site.register(Question)
 ```
+
+###  Requests
+Now it is all ready to create your routes and add/get/edit/delete students from
+teh database

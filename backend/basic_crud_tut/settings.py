@@ -26,6 +26,7 @@ SECRET_KEY = '$-s9qfey1*-^ow!^%zau$ey_38^+^=h+p#nh%-qmf#-etm4dxa'
 DEBUG = True
 
 ALLOWED_HOSTS = [
+        'localhost',
         '18.228.157.97',
         ]
 
@@ -46,7 +47,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
