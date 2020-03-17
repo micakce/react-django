@@ -62,7 +62,7 @@ CMD python3 manage.py runserver 0.0.0.0:8000
 ```
 
 In the terminal, run the following commands to build the image, create a Django
-project named  __hello_world__ (we are gonna refer to this as \<django\_project> from now on)
+project named <django_project>  (in this tutorial it is basic_crud_tut )
 and run the app:
 
 ```bash
@@ -231,5 +231,108 @@ you backend container `docker-compose exec backend /bin/bash` and run:
 site (`localhost:8000/admin`) and manage your models from there.
 
 ###  Requests
-Now it is all ready to create your routes and add/get/edit/delete students from
-teh database
+
+Now it is all ready to create your routes and add/get/edit/delete Professors from
+the database, firts you need to know that urls are manage from
+__`backend/<django_project>/urls.py`__ file, given we created an App and want
+to manage this specific requests from there, we just include the <django_app>
+routes in this file and move on ro configure the rest in the specific app:
+
+```python
+from django.contrib import admin
+from django.urls import include,path
+
+urlpatterns = [
+    # ...
+    path('personnel/', include('<django_app>.urls'))
+]
+```
+
+Django checks the incoming url request against the ones it has configured, what
+this means is, when the incoming requests have the path `personnel/` it'll go
+check the configured urls in the <django_app> module.
+
+Now we can move to our app and configure the rest there, we are going to focus
+on two specific files: `<django_app>/urls.py`, where we configure our routes
+and `<django_app>/views.py`, where we configure the logic that is going to
+execute when we hit those routes. I'll just explain the implementation of the
+update (PUT) request, whose logic I had trouble the most.
+
+In the `<django_app>/urls.py`file:
+```
+from django.urls import path
+
+# we import the views, the ones that execute the logic
+from . import views
+
+# and add the url patter to the corresponding variable
+urlpatterns = [
+    # ...
+    path('professor/<int:professor_id>/', views.get_professor, name='get_professor'),
+    path('professor/edit/<int:professor_id>/', views.edit_professor, name='edit_professor'),
+]
+```
+
+The path method takes 3 arguments: the first one is url pattern to match, the
+<int:professor_id>, is a placeholder that indicates the url will have an
+integer and that we can pass it as variable named `professor_id` to the view
+method (see below in the view configuration). **The second argument**, is
+simply the method from view that is going to execute. **The third argument**,
+allows us to set a name so it is easier to reference if we need to use it later
+in the code (out of the scope of this tutorial).
+
+
+In the `<django_app>/views.py`file:
+
+```python
+from django.core import serializers
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render,get_object_or_404
+from django.forms.models import model_to_dict
+
+# we gonna query the database, so we need the model
+from .models import Professor
+# used to (des)serialize data
+import json
+
+# Create your views here.
+
+# ...
+
+def get_professor(request, professor_id):
+    if request.method == "GET":
+        professor = get_object_or_404(Professor, pk=professor_id)
+        # # Deserialize using serializers
+        # prof_str = serializers.serialize('json', [professor])
+        # prof_ser = prof_str[1:-1]
+        # Deserialize using model_to_dict, (https://stackoverflow.com/questions/2391002/django-serializer-for-one-object)
+        response = model_to_dict(professor)
+        return JsonResponse(response)
+
+def edit_professor(request, professor_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        professor = get_object_or_404(Professor, pk=professor_id)
+        first_name, last_name, career = [data[k] for k in ("first_name",
+            "last_name", "career")]
+        professor.first_name = first_name
+        professor.last_name = last_name
+        professor.career = career
+        professor.save()
+        return HttpResponse(f'Professor {professor} modified correctly')
+```
+
+There are the two functions executed when the corresponding URL is hit. You se
+how the professor_id variable is passed as an argument, second to the request
+object. We check the request uses the correct method and query the database
+accordingly. In order to send and receive json data, we have to (des)serialize
+it. One thing that I could find strighforward in the Django documentation was
+how to serialize a single a sigle db object. Found two ways on internet (god
+bless stack overflow), I leave the links so you chenck them out
+
+
+## Coming next
+
+Even tho we can do basic CRUD with the backed, until this point I tried it with
+curl (see `<project_root>/request.sh`), next I'll be setting up the frontend to
+diplay the data and do these operations from there.
