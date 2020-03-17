@@ -1,6 +1,7 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import ReactTable from 'react-table';
 // import axios from 'axios';
 
 function App() {
