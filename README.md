@@ -10,8 +10,9 @@ __Part 2__ focuses on the CRUD configuration and its implementations details
 
 __NOTE:__ The one problem I found with the Part1 tutorial, was that files created by
 running a container command where created with the root user and group, I found myself
-running `sudo chown myuser:myuser -R /created_folder` pretty often. If you want to avoid
-that I included the solution explained in [this post](https://vsupalov.com/docker-shared-permissions/) to my __Dockerfiles__
+running `sudo chown myuser:myuser -R /created_folder` pretty often. To avoid that I
+I included the solution explained in [this post](https://vsupalov.com/docker-shared-permissions/)
+to my __Dockerfiles__
 
 The folder structure for this project is as follows:
 ```bash
@@ -59,7 +60,6 @@ ARG GROUP_ID
 
 RUN addgroup --gid $GROUP_ID user
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-USER user
 
 # Adding backend directory to make absolute filepaths consistent across services
 WORKDIR /app/backend
@@ -74,6 +74,8 @@ COPY . /app/backend
 # Make port 8000 available for the app
 EXPOSE 8000
 
+# Install all dependencies with root user, then switch to the created user
+USER user
 # Be sure to use 0.0.0.0 for the host within the Docker container,
 # otherwise the browser won't be able to find it
 CMD python3 manage.py runserver 0.0.0.0:8000
@@ -84,11 +86,12 @@ project named react_django_tut (<django_project>)
 and run the app:
 
 ```bash
-docker build -t backend:latest backend \
+echo Django > server/requirements.txt
+docker build -t backend:latest  \
             --build-arg USER_ID=$(id -u) \
-            --build-arg GROUP_ID=$(id -g) .
+            --build-arg GROUP_ID=$(id -g) backend
 docker run -v $PWD/backend:/app/backend backend:latest django-admin startproject react_django_tut .
-docker run -v $PWD/backend:/app/backend -p 8000:8000 backend:latest
+docker run -it -v $PWD/backend:/app/backend -p 8000:8000 backend:latest
 ```
 
 Now go to `localhost:8000` and you should see Django welcome page.
@@ -107,17 +110,21 @@ FROM node:10
 # set up container to create files with your current user
 ARG USER_ID
 ARG GROUP_ID
-
 RUN addgroup --gid $GROUP_ID user
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
+
+# install node_modules in different folder and point node to it (image portability)
+WORKDIR /nm
+# COPY ./package.json /nm
+# RUN npm install
+ENV NODE_PATH=/nm/node_modules
+# change file ownership so you can install more packages as you develop
+RUN chown -R user:user /nm
+
 USER user
 
+# main working directory
 WORKDIR /app/frontend/
-
-# Install dependencies
-# COPY package.json yarn.lock /app/frontend/
-
-# RUN npm install
 
 # Add rest of the client code
 COPY . /app/frontend/
@@ -126,6 +133,15 @@ EXPOSE 3000
 
 # CMD npm start
 ```
+
+Given our concern of not creating the files with the root user, and also that running our
+app with the root user doesn't seem right, we create a new folder where to
+install the node_modules and define an environment variable to tell node where to find them,
+the original post suggested a one-direction volume also called unnamed-volume for the
+node_modules, but this messed our intent of running the container with a custom user. This
+approach maintains image portability and adds a layer of security by not having to run the app
+with the root user.
+
 Some of the commands are currently commented out, because we don't have a few of
 the files referenced, but we will need these commands later. Run the following
 commands in the terminal to build the image, create the app, and run it:
@@ -134,9 +150,9 @@ commands in the terminal to build the image, create the app, and run it:
 docker build -t frontend:latest frontend \
             --build-arg USER_ID=$(id -u) \
             --build-arg GROUP_ID=$(id -g) .
-docker run -v $PWD/frontend:/app frontend:latest npx create-react-app myProject
-mv frontend/hello-world/* frontend/hello-world/.gitignore frontend/ && rmdir frontend/hello-world
-docker run -v $PWD/frontend:/app -p 3000:3000 frontend:latest npm start
+docker run -v $PWD/frontend:/app/frontend frontend:latest npx create-react-app myProject
+mv frontend/myProject/* frontend/myProject/.gitignore frontend/ && rmdir frontend/myProject
+docker run -it -v $PWD/frontend:/app/frontend -p 3000:3000 frontend:latest npm start
 ```
 
 Now should go to `localhost:3000` and be able to se the React welcome page
@@ -151,8 +167,11 @@ Creating the `docker-compose.yml` file:
 
 version: "3.2"
 services:
-  backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     image: backend
     volumes:
       - ./backend:/app/backend
@@ -162,7 +181,11 @@ services:
     tty: true
     command: python3 manage.py runserver 0.0.0.0:8000
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     image: frontend
     command: npm start
     volumes:
@@ -171,16 +194,22 @@ services:
       - /app/frontend/node_modules
     ports:
       - "3000:3000"
+    stdin_open: true
+    tty: true
     environment:
       - NODE_ENV=development
     depends_on:
       - backend
 ```
 
-Now, run `docker-compose up` and you should be able to see both welcome pages
-again in their corresponding URLs, if you get an error you might need to do
-`docker-compose build` and then `docker-compose up`, and now it should be ready
-to go.
+You might've noticed that in the docker-compose file I hard coded the ARG variables to
+the user and group id of 1000, was the simplest thing to do given that everyone should
+know their id when running the container, I found a few workarounds, but none of them worth it
+for the sake of this post
+
+Now you can uncomment the commands in the frontend/Dockerfile and run
+`docker-compose build` and then `docker-compose up`, now you should be able
+to see both welcome pages in their respective ports
 
 
 ## 1.4 - Connect Fronted with Backend
